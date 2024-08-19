@@ -6,18 +6,19 @@
 const Alexa = require('ask-sdk-core');
 const { Configuration, OpenAIApi } = require("openai");
 const keys = require('keys');
-const persistenceAdapter = require('ask-sdk-s3-persistence-adapter');
+const persistenceAdapter = require('ask-sdk-s3-persistence-adapter'); // 取得したデータをs3バケットに保存するライブラリ
 
 const configuration = new Configuration({
     apiKey: keys.OPEN_AI_KEY
 });
 const openai = new OpenAIApi(configuration);
 
+// OpenAIのAPIメソッドを呼び出して、チャットの応答を生成します。
 async function getAnswer(messages) {
   const response = await openai.createChatCompletion({
     model: keys.model,
     messages: messages
-});
+  });
 
   return response.data;
 }
@@ -25,6 +26,7 @@ function formatString(text) {
   return text.replace(/\n+/g, " ");
 }
 
+// リクエストタイプが'LaunchRequest'の場合メッセージを返し、応答がなければ繰り返す
 const LaunchRequestHandler = {
     canHandle(handlerInput) {
         return Alexa.getRequestType(handlerInput.requestEnvelope) === 'LaunchRequest';
@@ -39,6 +41,7 @@ const LaunchRequestHandler = {
     }
 };
 
+// 実際にアレクサに質問して回答をもらう関数
 const ChatGPTIntentHandler = {
     canHandle(handlerInput) {
         return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
@@ -58,6 +61,7 @@ const ChatGPTIntentHandler = {
         const speakOutput = formatString(response.choices[0].message.content);
         
         // 回答を保存
+        // 1500トークンを超える場合は２トークンごとに削除して履歴を保持する
         attr.conversation.push({ role : 'assistant', content: speakOutput });
         if(response.usage.total_tokens > 1500) {
             attr.conversation.shift();
